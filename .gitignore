@@ -1,1 +1,5 @@
 /target
+*.gguf
+.lala-index.json
+.env
+models/
