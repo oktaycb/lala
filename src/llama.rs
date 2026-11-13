@@ -18,3 +18,34 @@ pub struct Message {
     pub name: Option<String>,
 }
 
+impl Message {
+    pub fn system(text: impl Into<String>) -> Self {
+        Self {
+            role: "system".into(),
+            content: Some(text.into()),
+            tool_calls: None,
+            tool_call_id: None,
+            name: None,
+        }
+    }
+    pub fn user(text: impl Into<String>) -> Self {
+        Self {
+            role: "user".into(),
+            content: Some(text.into()),
+            tool_calls: None,
+            tool_call_id: None,
+            name: None,
+        }
+    }
+    pub fn tool_result(id: impl Into<String>, text: impl Into<String>) -> Self {
+        Self {
+            role: "tool".into(),
+            content: Some(text.into()),
+            tool_calls: None,
+            tool_call_id: Some(id.into()),
+            name: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
