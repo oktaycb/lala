@@ -1,5 +1,6 @@
 /target
 *.gguf
 .lala-index.json
+sft/train.jsonl
 .env
 models/
