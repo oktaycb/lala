@@ -164,3 +164,26 @@ impl LlamaClient {
         &self.http
     }
 
+    pub async fn health(&self) -> Result<()> {
+        let r = self
+            .http
+            .get(format!("{}/health", self.chat_url))
+            .send()
+            .await
+            .with_context(|| format!("ulaşılamadı: {}", self.chat_url))?;
+        if !r.status().is_success() {
+            anyhow::bail!("sağlık kontrolü başarısız: {}", r.status());
+        }
+        Ok(())
+    }
+
+    pub async fn embed_alive(&self) -> bool {
+        self.http
+            .get(format!("{}/health", self.embed_url))
+            .send()
+            .await
+            .map(|r| r.status().is_success())
+            .unwrap_or(false)
+    }
+
+    /// Toplu embedding. Girdi sırası korunur.
