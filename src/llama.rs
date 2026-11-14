@@ -187,3 +187,45 @@ impl LlamaClient {
     }
 
     /// Toplu embedding. Girdi sırası korunur.
+    pub async fn embed_batch(&self, inputs: &[String]) -> Result<Vec<Vec<f32>>> {
+        if inputs.is_empty() {
+            return Ok(vec![]);
+        }
+        let body = serde_json::json!({ "input": inputs, "model": "lala-embed" });
+        let resp = self
+            .http
+            .post(format!("{}/v1/embeddings", self.embed_url))
+            .json(&body)
+            .send()
+            .await
+            .with_context(|| format!("embedding sunucusuna ulaşılamadı: {}", self.embed_url))?;
+        let status = resp.status();
+        let text = resp.text().await.unwrap_or_default();
+        if !status.is_success() {
+            anyhow::bail!(
+                "embedding sunucusu hata döndürdü ({}): {}",
+                status,
+                truncate_str(&text, 300)
+            );
+        }
+        let parsed: EmbedResponse = serde_json::from_str(&text).context("embedding yanıtı bozuk")?;
+        let mut out = vec![Vec::new(); inputs.len()];
+        for d in parsed.data {
+            if d.index < out.len() {
+                out[d.index] = d.embedding;
+            }
+        }
+        Ok(out)
+    }
+}
+
+/// Karakter bazlı güvenli kesme ( Türkçe karakterleri bozmaz).
+pub fn truncate_str(s: &str, n: usize) -> String {
+    if s.chars().count() <= n {
+        s.to_string()
+    } else {
+        let mut out: String = s.chars().take(n).collect();
+        out.push('…');
+        out
+    }
+}
