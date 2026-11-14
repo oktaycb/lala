@@ -45,3 +45,9 @@ pub struct Index {
     avgdl: f32,
 }
 
+pub fn hash_str(s: &str) -> u64 {
+    let mut h = std::collections::hash_map::DefaultHasher::new();
+    s.hash(&mut h);
+    h.finish()
+}
+
