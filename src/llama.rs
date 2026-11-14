@@ -49,3 +49,35 @@ impl Message {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ToolCall {
+    pub id: String,
+    #[serde(rename = "type")]
+    pub kind: String,
+    pub function: FunctionCall,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FunctionCall {
+    pub name: String,
+    pub arguments: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ChatChoice {
+    pub message: Message,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
+pub struct Usage {
+    pub prompt_tokens: u64,
+    pub completion_tokens: u64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ChatResponse {
+    pub choices: Vec<ChatChoice>,
+    pub usage: Option<Usage>,
+}
+
+#[derive(Debug, Deserialize)]
