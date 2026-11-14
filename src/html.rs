@@ -85,3 +85,27 @@ pub fn strip_html(input: &str) -> String {
     collapsed.trim().to_string()
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn strips_tags_and_scripts() {
+        let html = "<html><head><style>p{color:red}</style></head><body><h1>Başlık</h1>\
+                    <p>Merhaba &amp; dünya.</p><script>alert('x')</script><p>Son</p></body></html>";
+        let out = strip_html(html);
+        assert!(out.contains("Başlık"), "başlık kayboldu: {out}");
+        assert!(out.contains("Merhaba & dünya."));
+        assert!(out.contains("Son"), "script sonrası içerik kayboldu: {out}");
+        assert!(!out.contains("alert"));
+        assert!(!out.contains("color:red"));
+    }
+
+    #[test]
+    fn handles_unterminated_script() {
+        let html = "<p>Önce</p><script>kalan her şey gider";
+        let out = strip_html(html);
+        assert!(out.contains("Önce"));
+        assert!(!out.contains("kalan"));
+    }
+}
