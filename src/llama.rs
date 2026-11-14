@@ -81,3 +81,86 @@ pub struct ChatResponse {
 }
 
 #[derive(Debug, Deserialize)]
+struct EmbedData {
+    embedding: Vec<f32>,
+    index: usize,
+}
+
+#[derive(Debug, Deserialize)]
+struct EmbedResponse {
+    data: Vec<EmbedData>,
+}
+
+pub struct LlamaClient {
+    http: reqwest::Client,
+    chat_url: String,
+    embed_url: String,
+}
+
+impl LlamaClient {
+    pub fn new(chat_url: String, embed_url: String) -> Self {
+        let http = reqwest::Client::builder()
+            .timeout(Duration::from_secs(300))
+            .build()
+            .expect("reqwest client");
+        Self {
+            http,
+            chat_url,
+            embed_url,
+        }
+    }
+
+    /// Sohbet tamamlama. `tools` verilirse tool_choice=auto ile gönderilir;
+    /// `response_format` verilirse (json_schema) grammar-constrained decoding uygulanır.
+    pub async fn chat(
+        &self,
+        messages: &[Message],
+        tools: Option<&Value>,
+        response_format: Option<&Value>,
+        max_tokens: u32,
+    ) -> Result<(Message, Option<Usage>)> {
+        let mut body = serde_json::json!({
+            "model": "lala",
+            "messages": messages,
+            "max_tokens": max_tokens,
+            // Küçük modellerde araç seçimi ve sadakat için düşük sıcaklık.
+            "temperature": 0.4,
+        });
+        if let Some(t) = tools {
+            body["tools"] = t.clone();
+            body["tool_choice"] = serde_json::json!("auto");
+        }
+        if let Some(rf) = response_format {
+            body["response_format"] = rf.clone();
+        }
+        let resp = self
+            .http
+            .post(format!("{}/v1/chat/completions", self.chat_url))
+            .json(&body)
+            .send()
+            .await
+            .with_context(|| format!("chat sunucusuna ulaşılamadı: {}", self.chat_url))?;
+        let status = resp.status();
+        let text = resp.text().await.unwrap_or_default();
+        if !status.is_success() {
+            anyhow::bail!(
+                "chat sunucusu hata döndürdü ({}): {}",
+                status,
+                truncate_str(&text, 400)
+            );
+        }
+        let parsed: ChatResponse = serde_json::from_str(&text)
+            .with_context(|| format!("chat yanıtı çözümlenemedi: {}", truncate_str(&text, 300)))?;
+        let msg = parsed
+            .choices
+            .into_iter()
+            .next()
+            .map(|c| c.message)
+            .context("chat yanıtı boş")?;
+        Ok((msg, parsed.usage))
+    }
+
+    pub fn http(&self) -> &reqwest::Client {
+        &self.http
+    }
+
