@@ -51,3 +51,36 @@ pub fn hash_str(s: &str) -> u64 {
     h.finish()
 }
 
+pub fn load_corpus(dir: &Path) -> Result<Vec<(String, String)>> {
+    if !dir.exists() {
+        anyhow::bail!("korpus dizini yok: {}", dir.display());
+    }
+    let mut out = Vec::new();
+    let mut entries: Vec<_> = fs::read_dir(dir)?.collect::<std::io::Result<Vec<_>>>()?;
+    entries.sort_by_key(|e| e.file_name());
+    for entry in entries {
+        let p = entry.path();
+        if !p.is_file() {
+            continue;
+        }
+        let ext = p
+            .extension()
+            .and_then(|e| e.to_str())
+            .unwrap_or("")
+            .to_lowercase();
+        if matches!(ext.as_str(), "md" | "txt") {
+            let content =
+                fs::read_to_string(&p).with_context(|| format!("okunamadı: {}", p.display()))?;
+            let name = p
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("belge")
+                .to_string();
+            out.push((name, content));
+        }
+    }
+    Ok(out)
+}
+
+/// Paragraf tabanlı parçalama: hedef ~1000 karakter, tek paragraf aşırı
+/// uzunsa kelime sınırında sert bölme.
