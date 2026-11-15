@@ -76,3 +76,25 @@ pub async fn execute(name: &str, args: &Value, ctx: &ToolCtx<'_>) -> Result<Stri
     }
 }
 
+async fn tool_retrieve(args: &Value, ctx: &ToolCtx<'_>) -> Result<String> {
+    let query = args
+        .get("query")
+        .and_then(|v| v.as_str())
+        .context("'query' eksik")?;
+    let hits = ctx.index.search(query, ctx.top_k, ctx.embed).await?;
+    if hits.is_empty() {
+        return Ok(json!({"sonuclar": [], "not": "korpusta eşleşme bulunamadı"}).to_string());
+    }
+    let results: Vec<Value> = hits
+        .iter()
+        .map(|h| {
+            json!({
+                "kaynak": h.source,
+                "skor": (h.score * 1000.0).round() / 1000.0,
+                "metin": truncate_str(&h.text, 500),
+            })
+        })
+        .collect();
+    Ok(json!({ "sonuclar": results }).to_string())
+}
+
