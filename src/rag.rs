@@ -251,3 +251,141 @@ async fn embed_missing(chunks: &mut [StoredChunk], client: &LlamaClient) -> Resu
     Ok(())
 }
 
+impl Index {
+    pub fn new(mode: SearchMode, chunks: Vec<StoredChunk>) -> Self {
+        let mut tfs: Vec<HashMap<String, u32>> = vec![HashMap::new(); chunks.len()];
+        let mut df: HashMap<String, usize> = HashMap::new();
+        let mut total_len = 0usize;
+        if mode == SearchMode::Lexical {
+            for (i, c) in chunks.iter().enumerate() {
+                let mut tf: HashMap<String, u32> = HashMap::new();
+                for w in tokenize(&c.text) {
+                    *tf.entry(w).or_insert(0) += 1;
+                }
+                for w in tf.keys() {
+                    *df.entry(w.clone()).or_insert(0) += 1;
+                }
+                total_len += tf.values().sum::<u32>() as usize;
+                tfs[i] = tf;
+            }
+        }
+        let avgdl = if chunks.is_empty() {
+            1.0
+        } else {
+            (total_len as f32 / chunks.len() as f32).max(1.0)
+        };
+        Self {
+            mode,
+            chunks,
+            tfs,
+            df,
+            avgdl,
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        self.chunks.len()
+    }
+
+    pub fn mode_name(&self) -> &'static str {
+        match self.mode {
+            SearchMode::Embed => "embed",
+            SearchMode::Lexical => "lexical",
+        }
+    }
+
+    pub async fn search(
+        &self,
+        query: &str,
+        k: usize,
+        client: Option<&LlamaClient>,
+    ) -> Result<Vec<Hit>> {
+        if self.chunks.is_empty() {
+            return Ok(vec![]);
+        }
+        match self.mode {
+            SearchMode::Embed => {
+                let client =
+                    client.context("embedding modu için embedding sunucusu gerekli")?;
+                let qtext = format!(
+                    "Instruct: Verilen sorgu için ilgili belge bölümlerini bul\nQuery: {query}"
+                );
+                let qv = client
+                    .embed_batch(&[qtext])
+                    .await?
+                    .pop()
+                    .context("sorgu embedding'i boş")?;
+                Ok(self.rank_cosine(&qv, k))
+            }
+            SearchMode::Lexical => Ok(self.rank_bm25(query, k)),
+        }
+    }
+
+    fn rank_cosine(&self, qv: &[f32], k: usize) -> Vec<Hit> {
+        let mut scored: Vec<(usize, f32)> = Vec::new();
+        for (i, c) in self.chunks.iter().enumerate() {
+            if c.vector.len() != qv.len() {
+                continue;
+            }
+            let mut dot = 0.0f32;
+            let mut na = 0.0f32;
+            let mut nb = 0.0f32;
+            for j in 0..qv.len() {
+                dot += qv[j] * c.vector[j];
+                na += qv[j] * qv[j];
+                nb += c.vector[j] * c.vector[j];
+            }
+            if na > 0.0 && nb > 0.0 {
+                scored.push((i, dot / (na.sqrt() * nb.sqrt())));
+            }
+        }
+        Self::top_hits(&self.chunks, &mut scored, k)
+    }
+
+    fn rank_bm25(&self, query: &str, k: usize) -> Vec<Hit> {
+        let q = tokenize(query);
+        if q.is_empty() {
+            return vec![];
+        }
+        let n = self.chunks.len() as f32;
+        let (k1, b) = (1.2f32, 0.75f32);
+        let mut scored: Vec<(usize, f32)> = Vec::new();
+        for (i, tf) in self.tfs.iter().enumerate() {
+            let mut score = 0.0f32;
+            let dl = tf.values().sum::<u32>() as f32;
+            for w in &q {
+                let f = term_freq(tf, w) as f32;
+                if f == 0.0 {
+                    continue;
+                }
+                let dfn = doc_freq(&self.df, w) as f32;
+                let idf = ((n - dfn + 0.5) / (dfn + 0.5) + 1.0).ln();
+                score += idf * (f * (k1 + 1.0))
+                    / (f + k1 * (1.0 - b + b * (dl / self.avgdl)));
+            }
+            if score > 0.0 {
+                scored.push((i, score));
+            }
+        }
+        Self::top_hits(&self.chunks, &mut scored, k)
+    }
+
+    fn top_hits(
+        chunks: &[StoredChunk],
+        scored: &mut Vec<(usize, f32)>,
+        k: usize,
+    ) -> Vec<Hit> {
+        scored
+            .sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        scored
+            .iter()
+            .take(k)
+            .map(|(i, s)| Hit {
+                source: chunks[*i].source.clone(),
+                text: chunks[*i].text.clone(),
+                score: *s,
+            })
+            .collect()
+    }
+}
+
