@@ -84,3 +84,50 @@ pub fn load_corpus(dir: &Path) -> Result<Vec<(String, String)>> {
 
 /// Paragraf tabanlı parçalama: hedef ~1000 karakter, tek paragraf aşırı
 /// uzunsa kelime sınırında sert bölme.
+fn chunk_content(text: &str) -> Vec<String> {
+    const TARGET: usize = 1000;
+    const HARD: usize = 1400;
+    let mut chunks = Vec::new();
+    let mut cur = String::new();
+    for para in text.split("\n\n") {
+        let para = para.trim();
+        if para.is_empty() {
+            continue;
+        }
+        if para.chars().count() > HARD {
+            if !cur.is_empty() {
+                chunks.push(std::mem::take(&mut cur));
+            }
+            let mut piece = String::new();
+            for word in para.split_whitespace() {
+                if piece.chars().count() + word.chars().count() + 1 > HARD && !piece.is_empty() {
+                    chunks.push(std::mem::take(&mut piece));
+                }
+                if !piece.is_empty() {
+                    piece.push(' ');
+                }
+                piece.push_str(word);
+            }
+            if !piece.is_empty() {
+                chunks.push(piece);
+            }
+        } else if cur.chars().count() + para.chars().count() + 2 > TARGET && !cur.is_empty() {
+            chunks.push(std::mem::take(&mut cur));
+            cur.push_str(para);
+        } else {
+            if !cur.is_empty() {
+                cur.push_str("\n\n");
+            }
+            cur.push_str(para);
+        }
+    }
+    if !cur.is_empty() {
+        chunks.push(cur);
+    }
+    chunks.retain(|c| !c.trim().is_empty());
+    chunks
+}
+
+/// Basit unicode-duyarlı tokenleştirici (Türkçe karakterler korunur).
+/// Not: 'İ'.to_lowercase() "i" + birleşen nokta üretir; nokta işareti
+/// alfanümerik olmadığı için süzülür.
