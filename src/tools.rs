@@ -137,3 +137,18 @@ async fn tool_web_search(args: &Value, ctx: &ToolCtx<'_>) -> Result<String> {
     Ok(json!({ "sonuclar": out }).to_string())
 }
 
+pub async fn probe_searxng(base: &str) -> Result<()> {
+    let http = reqwest::Client::new();
+    let url = format!("{}/search", base.trim_end_matches('/'));
+    let resp = http
+        .get(&url)
+        .query(&[("q", "test"), ("format", "json")])
+        .timeout(Duration::from_secs(5))
+        .send()
+        .await?;
+    if !resp.status().is_success() {
+        anyhow::bail!("durum: {}", resp.status());
+    }
+    Ok(())
+}
+
