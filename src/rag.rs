@@ -420,3 +420,37 @@ pub fn cache_map(idx: &Index) -> HashMap<u64, Vec<f32>> {
         .collect()
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn chunking_merges_small_paragraphs_and_splits_big_ones() {
+        let small = "paragraf bir\n\nparagraf iki\n\nparagraf üç";
+        let c = chunk_content(small);
+        assert_eq!(c.len(), 1);
+
+        let big_words = "kelime ".repeat(600); // ~4200 karakter
+        let c = chunk_content(&big_words);
+        assert!(c.len() >= 3);
+    }
+
+    #[test]
+    fn bm25_ranks_relevant_chunk_first() {
+        let chunks = vec![
+            StoredChunk { source: "a#1".into(), text: "Ankara Türkiye'nin başkentidir.".into(), hash: 1, vector: vec![] },
+            StoredChunk { source: "b#1".into(), text: "İstanbul kalabalık bir şehirdir.".into(), hash: 2, vector: vec![] },
+        ];
+        let idx = Index::new(SearchMode::Lexical, chunks);
+        let hits = idx.rank_bm25("başkent neresidir", 2);
+        assert_eq!(hits[0].source, "a#1");
+    }
+
+    #[test]
+    fn tokenizer_keeps_turkish_letters() {
+        let t = tokenize("İstanbul'daki öğrenciler!");
+        assert!(t.contains(&"istanbul'daki".to_string()) == false);
+        assert!(t.contains(&"istanbul".to_string()));
+        assert!(t.contains(&"öğrenciler".to_string()));
+    }
+}
