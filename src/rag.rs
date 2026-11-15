@@ -389,3 +389,34 @@ impl Index {
     }
 }
 
+pub fn save(idx: &Index, path: &Path) -> Result<()> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).ok();
+    }
+    let file = IndexFile {
+        mode: idx.mode_name().to_string(),
+        chunks: idx.chunks.clone(),
+    };
+    serde_json::to_writer_pretty(fs::File::create(path)?, &file)?;
+    Ok(())
+}
+
+pub fn load(path: &Path) -> Result<Index> {
+    let file: IndexFile = serde_json::from_reader(fs::File::open(path)?)?;
+    let mode = match file.mode.as_str() {
+        "embed" => SearchMode::Embed,
+        _ => SearchMode::Lexical,
+    };
+    Ok(Index::new(mode, file.chunks))
+}
+
+/// Mevcut indeksten vektör cache'i çıkarır (`lala index` yeniden koşumlarında
+/// aynı parçalar yeniden gömülmesin).
+pub fn cache_map(idx: &Index) -> HashMap<u64, Vec<f32>> {
+    idx.chunks
+        .iter()
+        .filter(|c| !c.vector.is_empty())
+        .map(|c| (c.hash, c.vector.clone()))
+        .collect()
+}
+
