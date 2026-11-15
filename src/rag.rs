@@ -131,3 +131,67 @@ fn chunk_content(text: &str) -> Vec<String> {
 /// Basit unicode-duyarlı tokenleştirici (Türkçe karakterler korunur).
 /// Not: 'İ'.to_lowercase() "i" + birleşen nokta üretir; nokta işareti
 /// alfanümerik olmadığı için süzülür.
+fn tokenize(s: &str) -> Vec<String> {
+    let mut word = String::new();
+    let mut words = Vec::new();
+    for ch in s.chars() {
+        if ch.is_alphanumeric() {
+            for lc in ch.to_lowercase() {
+                if lc.is_alphanumeric() {
+                    word.push(lc);
+                }
+            }
+        } else if !word.is_empty() {
+            words.push(std::mem::take(&mut word));
+        }
+    }
+    if !word.is_empty() {
+        words.push(word);
+    }
+    words
+}
+
+/// Türkçe eklemeli morfoloji için yumuşak eşleşme: tam eşleşme yoksa,
+/// kısa terimler dışında ön-ek ilişkisi (başkent ↔ başkentidir) kabul edilir.
+fn term_freq(tf: &HashMap<String, u32>, w: &str) -> u32 {
+    if let Some(f) = tf.get(w) {
+        return *f;
+    }
+    if w.chars().count() < 4 {
+        return 0;
+    }
+    let mut best = 0u32;
+    for (k, f) in tf {
+        let kc = k.chars().count();
+        if kc < 4 {
+            continue;
+        }
+        if k.starts_with(w) || w.starts_with(k) {
+            best = best.max(*f);
+        }
+    }
+    best
+}
+
+fn doc_freq(df: &HashMap<String, usize>, w: &str) -> usize {
+    if let Some(d) = df.get(w) {
+        return *d;
+    }
+    if w.chars().count() < 4 {
+        return 0;
+    }
+    let mut total = 0usize;
+    for (k, d) in df {
+        let kc = k.chars().count();
+        if kc < 4 {
+            continue;
+        }
+        if k.starts_with(w) || w.starts_with(k) {
+            total += d;
+        }
+    }
+    total
+}
+
+/// Korpusu okuyup indeks kurar. Embedding sunucusu varsa vektörlü mod,
+/// yoksa (ve tüm vektörler cache'ten gelmiyorsa) BM25 moduna düşer.
