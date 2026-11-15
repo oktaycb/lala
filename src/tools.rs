@@ -59,3 +59,20 @@ pub fn definitions() -> Value {
     ])
 }
 
+pub struct ToolCtx<'a> {
+    pub http: &'a reqwest::Client,
+    pub index: &'a Index,
+    pub searxng_url: &'a str,
+    pub top_k: usize,
+    pub embed: Option<&'a LlamaClient>,
+}
+
+pub async fn execute(name: &str, args: &Value, ctx: &ToolCtx<'_>) -> Result<String> {
+    match name {
+        "retrieve" => tool_retrieve(args, ctx).await,
+        "web_search" => tool_web_search(args, ctx).await,
+        "fetch_url" => tool_fetch_url(args, ctx).await,
+        other => anyhow::bail!("bilinmeyen araç: {other}"),
+    }
+}
+
