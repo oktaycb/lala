@@ -98,3 +98,42 @@ async fn tool_retrieve(args: &Value, ctx: &ToolCtx<'_>) -> Result<String> {
     Ok(json!({ "sonuclar": results }).to_string())
 }
 
+async fn tool_web_search(args: &Value, ctx: &ToolCtx<'_>) -> Result<String> {
+    let query = args
+        .get("query")
+        .and_then(|v| v.as_str())
+        .context("'query' eksik")?;
+    let url = format!("{}/search", ctx.searxng_url.trim_end_matches('/'));
+    let resp = ctx
+        .http
+        .get(&url)
+        .query(&[
+            ("q", query),
+            ("format", "json"),
+            ("language", "tr"),
+            ("safesearch", "1"),
+        ])
+        .timeout(Duration::from_secs(15))
+        .send()
+        .await
+        .context("SearXNG'ye ulaşılamadı (docker ile başlat: docker run -p 8888:8080 searxng/searxng)")?;
+    if !resp.status().is_success() {
+        anyhow::bail!("SearXNG hata döndürdü: {} (format=json kapalı olabilir)", resp.status());
+    }
+    let v: Value = resp.json().await.context("SearXNG yanıtı JSON değil")?;
+    let mut out = Vec::new();
+    if let Some(results) = v.get("results").and_then(|r| r.as_array()) {
+        for r in results.iter().take(5) {
+            out.push(json!({
+                "baslik": r.get("title").and_then(|t| t.as_str()).unwrap_or(""),
+                "url": r.get("url").and_then(|t| t.as_str()).unwrap_or(""),
+                "ozet": truncate_str(r.get("content").and_then(|t| t.as_str()).unwrap_or(""), 220),
+            }));
+            if out.len() >= 5 {
+                break;
+            }
+        }
+    }
+    Ok(json!({ "sonuclar": out }).to_string())
+}
+
