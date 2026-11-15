@@ -195,3 +195,59 @@ fn doc_freq(df: &HashMap<String, usize>, w: &str) -> usize {
 
 /// Korpusu okuyup indeks kurar. Embedding sunucusu varsa vektörlü mod,
 /// yoksa (ve tüm vektörler cache'ten gelmiyorsa) BM25 moduna düşer.
+pub async fn build(
+    dir: &Path,
+    client: Option<&LlamaClient>,
+    cache: &HashMap<u64, Vec<f32>>,
+) -> Result<Index> {
+    let docs = load_corpus(dir)?;
+    anyhow::ensure!(
+        !docs.is_empty(),
+        "korpus boş: {} içinde .md/.txt yok",
+        dir.display()
+    );
+    let mut chunks = Vec::new();
+    for (name, content) in &docs {
+        for (i, c) in chunk_content(content).into_iter().enumerate() {
+            let hash = hash_str(&c);
+            let vector = cache.get(&hash).cloned().unwrap_or_default();
+            chunks.push(StoredChunk {
+                source: format!("{name}#{}", i + 1),
+                text: c,
+                hash,
+                vector,
+            });
+        }
+    }
+    let mut mode = SearchMode::Lexical;
+    if let Some(client) = client {
+        let missing = chunks.iter().filter(|c| c.vector.is_empty()).count();
+        if client.embed_alive().await {
+            embed_missing(&mut chunks, client).await?;
+            mode = SearchMode::Embed;
+        } else if missing < chunks.len() {
+            mode = SearchMode::Embed;
+        }
+    }
+    Ok(Index::new(mode, chunks))
+}
+
+async fn embed_missing(chunks: &mut [StoredChunk], client: &LlamaClient) -> Result<()> {
+    let mut done = 0usize;
+    while done < chunks.len() {
+        let end = (done + 16).min(chunks.len());
+        let need: Vec<usize> = (done..end).filter(|&i| chunks[i].vector.is_empty()).collect();
+        if need.is_empty() {
+            done = end;
+            continue;
+        }
+        let inputs: Vec<String> = need.iter().map(|&i| chunks[i].text.clone()).collect();
+        let vecs = client.embed_batch(&inputs).await?;
+        for (i, v) in need.into_iter().zip(vecs) {
+            chunks[i].vector = v;
+        }
+        done = end;
+    }
+    Ok(())
+}
+
