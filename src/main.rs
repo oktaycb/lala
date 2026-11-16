@@ -167,3 +167,22 @@ async fn chat_cmd(cfg: &Config) -> Result<()> {
     Ok(())
 }
 
+async fn ask_cmd(cfg: &Config, question: &str) -> Result<()> {
+    let client = ensure_client(cfg);
+    let index = ensure_index(cfg, &client).await?;
+    let mut messages = vec![
+        Message::system(agent::SYSTEM_PROMPT),
+        Message::user(question),
+    ];
+    let (answer, sources) =
+        agent::run_turn(cfg, &client, &index, &mut messages, 1500).await?;
+    println!("{answer}\n");
+    if !sources.is_empty() {
+        println!("Kaynaklar:");
+        for (i, s) in sources.iter().enumerate() {
+            println!("  [{}] {}", i + 1, s);
+        }
+    }
+    Ok(())
+}
+
