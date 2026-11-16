@@ -114,3 +114,56 @@ async fn ensure_index(cfg: &Config, client: &LlamaClient) -> Result<rag::Index> 
     Ok(idx)
 }
 
+async fn chat_cmd(cfg: &Config) -> Result<()> {
+    let client = ensure_client(cfg);
+    let index = ensure_index(cfg, &client).await?;
+    let mut messages = vec![Message::system(agent::SYSTEM_PROMPT)];
+    println!("Lala hazır. (yardım için /yardim, çıkış için /cik)");
+    let stdin = std::io::stdin();
+    loop {
+        print!("Sen> ");
+        std::io::stdout().flush().ok();
+        let mut line = String::new();
+        if stdin.read_line(&mut line)? == 0 {
+            break;
+        }
+        let line = line.trim();
+        match line {
+            "" => continue,
+            "/cik" | "/quit" => break,
+            "/sifirla" => {
+                messages = vec![Message::system(agent::SYSTEM_PROMPT)];
+                println!("[sohbet sıfırlandı]");
+                continue;
+            }
+            "/araclar" => {
+                println!("Araçlar: web_search, retrieve, fetch_url");
+                continue;
+            }
+            "/yardim" | "/help" => {
+                println!("/araclar araçları listeler, /sifirla sohbeti sıfırlar, /cik çıkar.");
+                continue;
+            }
+            _ => {}
+        }
+        messages.push(Message::user(line));
+        match agent::run_turn(cfg, &client, &index, &mut messages, 1500).await {
+            Ok((answer, sources)) => {
+                println!("\nLala> {answer}\n");
+                if !sources.is_empty() {
+                    println!("Kaynaklar:");
+                    for (i, s) in sources.iter().enumerate() {
+                        println!("  [{}] {}", i + 1, s);
+                    }
+                    println!();
+                }
+            }
+            Err(e) => {
+                // Son kullanıcı mesajını tut, hatayı bildir.
+                eprintln!("[hata] {e:#}");
+            }
+        }
+    }
+    Ok(())
+}
+
