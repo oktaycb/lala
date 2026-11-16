@@ -152,3 +152,32 @@ pub async fn probe_searxng(base: &str) -> Result<()> {
     Ok(())
 }
 
+async fn tool_fetch_url(args: &Value, ctx: &ToolCtx<'_>) -> Result<String> {
+    let url = args
+        .get("url")
+        .and_then(|v| v.as_str())
+        .context("'url' eksik")?;
+    let resp = ctx
+        .http
+        .get(url)
+        .header("User-Agent", "lala/0.1 (yerel ajan)")
+        .timeout(Duration::from_secs(20))
+        .send()
+        .await
+        .context("sayfa indirilemedi")?;
+    if !resp.status().is_success() {
+        anyhow::bail!("sayfa hata döndürdü: {}", resp.status());
+    }
+    let body = resp.text().await.context("sayfa gövdesi okunamadı")?;
+    let text = if body.trim_start().starts_with('<') {
+        html::strip_html(&body)
+    } else {
+        body
+    };
+    Ok(json!({
+        "url": url,
+        "metin": truncate_str(&text, 2400),
+    })
+    .to_string())
+}
+
