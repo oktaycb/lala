@@ -207,3 +207,27 @@ async fn index_cmd(cfg: &Config) -> Result<()> {
     Ok(())
 }
 
+async fn extract_cmd(text: &str, schema_path: &str) -> Result<()> {
+    let client = ensure_client(&Config::from_env(None));
+    let raw = std::fs::read_to_string(schema_path)
+        .with_context(|| format!("şema okunamadı: {schema_path}"))?;
+    let schema: serde_json::Value =
+        serde_json::from_str(raw.trim()).context("şema geçerli JSON değil")?;
+    let rf = serde_json::json!({
+        "type": "json_schema",
+        "json_schema": { "name": "cevap", "strict": true, "schema": schema }
+    });
+    let messages = vec![
+        Message::system("/no_think Şemaya uyan tek bir JSON nesnesi döndür."),
+        Message::user(text),
+    ];
+    let (msg, usage) = client.chat(&messages, None, Some(&rf), 800).await?;
+    let content = msg.content.unwrap_or_default();
+    println!("{content}");
+    match serde_json::from_str::<serde_json::Value>(content.trim()) {
+        Ok(_) => println!("\n[✓ çıktı geçerli JSON; usage: {usage:?}]"),
+        Err(e) => println!("\n[!] JSON parse uyarısı: {e}"),
+    }
+    Ok(())
+}
+
