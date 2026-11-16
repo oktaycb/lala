@@ -181,3 +181,17 @@ async fn tool_fetch_url(args: &Value, ctx: &ToolCtx<'_>) -> Result<String> {
     .to_string())
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn definitions_has_three_tools_in_fixed_order() {
+        let d = definitions();
+        let arr = d.as_array().unwrap();
+        assert_eq!(arr.len(), 3);
+        assert_eq!(arr[0]["function"]["name"], "retrieve");
+        assert_eq!(arr[1]["function"]["name"], "web_search");
+        assert_eq!(arr[2]["function"]["name"], "fetch_url");
+    }
+}
