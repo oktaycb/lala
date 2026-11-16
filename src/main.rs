@@ -186,3 +186,24 @@ async fn ask_cmd(cfg: &Config, question: &str) -> Result<()> {
     Ok(())
 }
 
+async fn index_cmd(cfg: &Config) -> Result<()> {
+    let client = ensure_client(cfg);
+    // Vektör cache'i: aynı metinler yeniden gömülmesin.
+    let cache = if cfg.index_path.exists() {
+        rag::load(&cfg.index_path)
+            .map(|idx| rag::cache_map(&idx))
+            .unwrap_or_default()
+    } else {
+        HashMap::new()
+    };
+    let idx = rag::build(&cfg.corpus_dir, Some(&client), &cache).await?;
+    let n = idx.len();
+    let mode = idx.mode_name().to_string();
+    rag::save(&idx, &cfg.index_path)?;
+    println!(
+        "İndeks oluşturuldu: {n} parça, mod={mode} → {}",
+        cfg.index_path.display()
+    );
+    Ok(())
+}
+
