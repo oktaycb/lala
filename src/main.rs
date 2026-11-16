@@ -231,3 +231,41 @@ async fn extract_cmd(text: &str, schema_path: &str) -> Result<()> {
     Ok(())
 }
 
+async fn doctor() -> Result<()> {
+    let cfg = Config::from_env(None);
+    let client = ensure_client(&cfg);
+    println!("chat  : {} → ", cfg.chat_url);
+    match client.health().await {
+        Ok(_) => println!("        ✓ çalışıyor"),
+        Err(e) => println!("        ✗ erişilemedi: {e}"),
+    }
+    print!("embed : {} → ", cfg.embed_url);
+    if client.embed_alive().await {
+        println!("✓ çalışıyor (RAG embedding modu mümkün)");
+    } else {
+        println!("✗ kapalı (RAG lexical/BM25 moduna düşer)");
+    }
+    print!("searxng: {} → ", cfg.searxng_url);
+    match tools::probe_searxng(&cfg.searxng_url).await {
+        Ok(_) => println!("✓ çalışıyor"),
+        Err(_) => println!("✗ kapalı (web_search aracı hata mesajı döndürür)"),
+    }
+    println!(
+        "korpus: {} → ",
+        cfg.corpus_dir.display()
+    );
+    match rag::load_corpus(&cfg.corpus_dir) {
+        Ok(docs) => println!("        ✓ {} belge", docs.len()),
+        Err(e) => println!("        ✗ okunamadı: {e}"),
+    }
+    print!("indeks: {} → ", cfg.index_path.display());
+    if cfg.index_path.exists() {
+        match rag::load(&cfg.index_path) {
+            Ok(idx) => println!("✓ {} parça, mod={}", idx.len(), idx.mode_name()),
+            Err(e) => println!("✗ bozuk: {e}"),
+        }
+    } else {
+        println!("yok (ilk kullanımda otomatik oluşturulur)");
+    }
+    Ok(())
+}
