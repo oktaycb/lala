@@ -1,0 +1,14 @@
+{
+  "type": "object",
+  "properties": {
+    "baslik": { "type": "string", "description": "Metnin kısa başlığı" },
+    "anahtar_kavramlar": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Metindeki en fazla 5 anahtar kavram"
+    },
+    "tek_cumle_ozet": { "type": "string", "description": "Tek cümlelik özet" },
+    "dil": { "type": "string", "description": "Metnin dili (örn. Türkçe)" }
+  },
+  "required": ["baslik", "anahtar_kavramlar", "tek_cumle_ozet", "dil"]
+}
