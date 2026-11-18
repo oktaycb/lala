@@ -1,0 +1,14 @@
+# Lala için SearXNG ayarları: yalnızca JSON formatı açık.
+# deploy/ dizininden: docker compose up -d
+use_default_settings: true
+
+server:
+  # Uygulama düzeyinde gizli anahtar — kendi değerinizle değiştirin:
+  #   python -c "import secrets; print(secrets.token_hex(32))"
+  secret_key: "CHANGE_ME_lala_dev_placeholder"
+
+search:
+  safe_search: 1
+  formats:
+    - html
+    - json
