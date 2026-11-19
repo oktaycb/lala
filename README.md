@@ -106,3 +106,11 @@ koşturmanız yeterli; paragraf sınırlarına saygılı ~1000 karakterlik
 parçalara bölünüp gömülür. Örnek korpus (projenin kendi kavramları ve
 Türkiye notları) dahil gelmektedir.
 
+## SFT veri hattı (sonraki faz için hazır)
+
+`sft/` dizininde sentetik tool-call dataset iskeleti duruyor: el yazması
+senaryolar (`scenarios.jsonl`, 31 adet) → `cargo run --bin lala-gen` →
+TRL/Qwen3 şablonuyla uyumlu eğitim örnekleri. Üreteç, sistem prompt'unu ve
+araç şemalarını **çalışma zamanıyla aynı kaynaktan** alır (lib crate) —
+eğitim/inference dağılım kayması yok. Detaylar: [sft/FORMAT.md](sft/FORMAT.md).
+
