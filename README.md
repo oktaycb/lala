@@ -49,3 +49,15 @@ yok, bulut yok.
   hapseder — geçerlilik dilbilgisi düzeyinde garanti edilir, retry yok.
 - **Kaynak atıfları**: cevapta [1], [2] işaretleri + altta kaynak listesi.
 
+## Kurulum
+
+### Gereksinimler
+
+- Rust (stable)
+- [llama.cpp](https://github.com/ggml-org/llama.cpp) — Windows'ta
+  release sayfasındaki `bin-win-vulkan-x64` paketi AMD kartlarda
+  CUDA'sız çalışır (herhangi bir backend de olur)
+- Modeller (GGUF): sohbet için `Qwen3-0.6B-Q8_0` (veya `Q4_K_M`),
+  RAG için `Qwen/Qwen3-Embedding-0.6B-GGUF`
+- (opsiyonel, web_search için) Docker + SearXNG
+
