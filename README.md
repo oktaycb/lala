@@ -129,3 +129,26 @@ eğitim/inference dağılım kayması yok. Detaylar: [sft/FORMAT.md](sft/FORMAT.
 - **İki modlu RAG**: embedding sunucusu bir lüks; BM25 yedeği sayesinde
   lala tamamen çevrimdışı da çalışır.
 
+## Bilinen sınırlar
+
+- 0.6B'nin **sentez kalitesi** düşüktür: doğru belgeyi bulur, cümlelemede
+ savunaklı olabilir. Yol haritasının ilk maddesi tam olarak bunun için:
+  alan-özel LoRA SFT. Boyut merdiveni (1.7B, 4B) de aynı iskeletle çalışır.
+- BM25 modu Türkçe morfolojisini yalnızca ön-ek eşleşmesiyle idare eder.
+- `web_search` için SearXNG'nin `format=json` izni açık olmalıdır.
+
+## Yol haritası
+
+- [x] Sentetik tool-call dataset iskeleti (`sft/` + `lala-gen`)
+- [x] Paralel araç çalıştırma
+- [x] SearXNG docker-compose paketi (`deploy/`)
+- [x] Boyut merdiveni ilk ölçüm: 1.7B Q4_K_M sentez/dürüstlükte 0.6B'yi
+  belirgin şekilde geçti → önerilen varsayılan
+- [ ] LoRA SFT (dataset büyütme → TRL+PEFT, tek GPU) — sentez kalitesinin
+  kalıcı çözümü
+- [ ] Qwen3-4B profili (merdivenin üst basamağı)
+- [ ] Doğrudan GBNF grammar parametresi ile araç çağrısı kısıtlama opsiyonu
+
+## Lisans
+
+MIT — bkz. [LICENSE](LICENSE).
