@@ -30,3 +30,22 @@ yok, bulut yok.
                               :8125 | BM25)
 ```
 
+## Özellikler
+
+- **Üç araç**: `retrieve` (yerel RAG), `web_search` (SearXNG), `fetch_url`
+  (sayfa → metin). Araç şemaları sabit sırada üretilir; llama.cpp'nin
+  önek KV-cache'i böylece her turda dolu dolu kullanılır.
+- **Paralel araç yürütme**: aynı turdaki birden çok araç çağrısı birlikte
+  koşar, sonuçlar çağrı sırasıyla geri beslenir.
+- **Döngü seviyesinde guardrail'ler**: azami araç turu, araç hata mesajına
+  gömülü anti-uydurma yönergesi, web_search düşerse otomatik retrieve
+  yedeği, boş yanıtta dürüst mesaj. Model disiplinine güvenilmez —
+  bunlar deterministik Rust kodudur.
+- **RAG, çift modlu**: Qwen3-Embedding ile anlamsal arama (embed modu);
+  embedding sunucusu yoksa BM25'e düşer (lexical mod) ve çevrimdışı
+  çalışır. Türkçe eklemeli morfoloji için ön-ek eşleşmesi içerir
+  ("başkent" ↔ "başkentidir").
+- **Grammar-constrained decoding**: `lala extract` çıktıyı JSON şemaya
+  hapseder — geçerlilik dilbilgisi düzeyinde garanti edilir, retry yok.
+- **Kaynak atıfları**: cevapta [1], [2] işaretleri + altta kaynak listesi.
+
