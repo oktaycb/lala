@@ -75,3 +75,19 @@ cd deploy && docker compose up -d
 # Not: deploy/searxng/settings.yml içinde secret_key'i değiştirin.
 ```
 
+### Lala
+
+```bash
+cargo build --release
+./target/release/lala doctor     # sunucu/korpus/içindekiler durumu
+```
+
+### Yapılandırma
+
+| Değişken | Varsayılan | Anlamı |
+|---|---|---|
+| `LALA_CHAT_URL` | `http://127.0.0.1:8123` | sohbet modeli sunucusu |
+| `LALA_EMBED_URL` | `http://127.0.0.1:8125` | embedding sunucusu |
+| `LALA_SEARXNG_URL` | `http://127.0.0.1:8888` | SearXNG örneği |
+| `LALA_CORPUS` | `./corpus` | belge dizini (`.md`, `.txt`) |
+
