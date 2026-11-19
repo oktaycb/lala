@@ -91,3 +91,18 @@ cargo build --release
 | `LALA_SEARXNG_URL` | `http://127.0.0.1:8888` | SearXNG örneği |
 | `LALA_CORPUS` | `./corpus` | belge dizini (`.md`, `.txt`) |
 
+## Kullanım
+
+```bash
+lala index                          # korpusu indeksle (vektörler cache'lenir)
+lala ask "Korpusa göre lala nedir?" # tek seferlik soru
+lala chat                           # etkileşimli REPL (/yardim, /araclar, /sifirla, /cik)
+lala extract "metin..." --schema examples/ozet-schema.json   # şemaya hapsolmuş JSON
+lala doctor                         # tüm bileşenlerin sağlık durumu
+```
+
+`corpus/` dizinine kendi `.md`/`.txt` dosyalarınızı atıp `lala index`
+koşturmanız yeterli; paragraf sınırlarına saygılı ~1000 karakterlik
+parçalara bölünüp gömülür. Örnek korpus (projenin kendi kavramları ve
+Türkiye notları) dahil gelmektedir.
+
