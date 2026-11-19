@@ -114,3 +114,18 @@ TRL/Qwen3 şablonuyla uyumlu eğitim örnekleri. Üreteç, sistem prompt'unu ve
 araç şemalarını **çalışma zamanıyla aynı kaynaktan** alır (lib crate) —
 eğitim/inference dağılım kayması yok. Detaylar: [sft/FORMAT.md](sft/FORMAT.md).
 
+## Mimari kararlar
+
+- **Model disiplinine değil döngüye güven**: 0.6B'lik modelde araç seçimi
+  ve hata sonrası davranış dalgalıdır. Lala bu belirsizliği modelden
+  Rust'a taşır: hatadan sonra uydurma yasağı araç sonucunun içine gömülür,
+  web_search düşerse döngü bizzat retrieve koşturur, boş cevaba dürüst
+  mesaj konur.
+- **Düşük sıcaklık (0.4)**: küçük modellerde araç çağrılarının biçimsel
+  tutarlılığı için.
+- **Sabit araç şeması sırası**: sistem mesajı + şemalar her istekte aynı
+  öneki oluşturur; llama.cpp önek cache'i sayesinde prompt işleme
+  10 kat hızlanabilir.
+- **İki modlu RAG**: embedding sunucusu bir lüks; BM25 yedeği sayesinde
+  lala tamamen çevrimdışı da çalışır.
+
