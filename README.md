@@ -61,3 +61,17 @@ yok, bulut yok.
   RAG için `Qwen/Qwen3-Embedding-0.6B-GGUF`
 - (opsiyonel, web_search için) Docker + SearXNG
 
+### Sunucular
+
+```bash
+# Sohbet modeli
+llama-server -m Qwen3-0.6B-Q8_0.gguf -ngl 99 -c 16384 --jinja --port 8123
+
+# Embedding modeli (RAG için; kapalıysa lala BM25'e düşer)
+llama-server -m Qwen3-Embedding-0.6B-Q8_0.gguf --embedding -c 8192 -ngl 99 --port 8125
+
+# SearXNG (web_search için; kapalıysa web aramaları dürüstçe hata verir)
+cd deploy && docker compose up -d
+# Not: deploy/searxng/settings.yml içinde secret_key'i değiştirin.
+```
+
